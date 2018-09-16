@@ -43,7 +43,6 @@ public class EmailChecker {
         NamingEnumeration en = attr.getAll();
         while (en.hasMore()) {
             String x = (String) en.next();
-            System.out.println(x);
             String f[] = x.split(" ");
             if (f.length > 1) {
                 if (f[1].endsWith(".")) {
