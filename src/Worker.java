@@ -18,17 +18,18 @@ public class Worker extends Thread {
 
     PrintWriter out;
     BlockingQueue<Email> queue;
-    AtomicInteger validCount, invalidCount;
+    AtomicInteger validCount, invalidCount, errCount;
     boolean ggMXOnly;
     Main parentWindows;
     String separator;
 
     public Worker(BlockingQueue<Email> queue, PrintWriter out, AtomicInteger validCount,
-            AtomicInteger invalidCount, boolean ggMXOnly, Main parentWindows, String separator) {
+            AtomicInteger invalidCount, AtomicInteger errCount, boolean ggMXOnly, Main parentWindows, String separator) {
         this.queue = queue;
         this.out = out;
         this.validCount = validCount;
         this.invalidCount = invalidCount;
+        this.errCount = errCount;
         this.ggMXOnly = ggMXOnly;
         this.parentWindows = parentWindows;
         this.separator = separator;
@@ -38,26 +39,33 @@ public class Worker extends Thread {
     public void run() {
         Email e;
         while ((e = queue.poll()) != null) {
-            boolean valid = true;
+            int code = 1;
             for (String ignore : IGNORE_LIST) {
                 if (e.email.toLowerCase().contains(ignore)) {
-                    valid = false;
+                    code = 0;
                     e.log.append("IN INGORE LIST.\r\n");
                     break;
                 }
             }
-            if (valid) {
-                // 30s timeout.
-                valid = EmailChecker.isAddressValid(e.email, 30000, e, ggMXOnly);
+
+            if (code == 1) {
+                // 60s timeout.
+                code = EmailChecker.isAddressValid(e.email, 60000, e, ggMXOnly);
             }
-            if (valid) {
-                validCount.incrementAndGet();
-                e.status = 1;
-            } else {
-                invalidCount.incrementAndGet();
-                e.status = 0;
+            e.status = code;
+            switch (code) {
+                case 1:
+                    validCount.incrementAndGet();
+                    break;
+                case 0:
+                    invalidCount.incrementAndGet();
+                    break;
+                default:
+                    // Connection error.
+                    errCount.incrementAndGet();
+                    break;
             }
-            String result = e.lineInfo + separator + (valid ? "valid" : "invalid");
+            String result = e.lineInfo + separator + e.getStatusString();
             synchronized (out) {
                 out.println(result);
                 out.flush();

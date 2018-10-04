@@ -130,12 +130,12 @@ public class Main extends javax.swing.JFrame {
         try {
             PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(output), "UTF-8"));
             int total = queue.size();
-            AtomicInteger validCount = new AtomicInteger(0), invalidCount = new AtomicInteger(0);
+            AtomicInteger validCount = new AtomicInteger(0), invalidCount = new AtomicInteger(0), errCount = new AtomicInteger(0);
 
             ArrayList<Thread> threads = new ArrayList<>();
 
             for (int i = 0; i < Integer.parseInt(numberOfWorkersComboBox.getSelectedItem().toString()); ++i) {
-                threads.add(new Worker(queue, out, validCount, invalidCount, googleMXCheckOnly.isSelected(), this, separator));
+                threads.add(new Worker(queue, out, validCount, invalidCount, errCount, googleMXCheckOnly.isSelected(), this, separator));
             }
 
             // Monitor.
@@ -150,13 +150,13 @@ public class Main extends javax.swing.JFrame {
                         int done;
                         do {
                             Thread.sleep(10000);
-                            done = (validCount.get() + invalidCount.get());
+                            done = (validCount.get() + invalidCount.get() + errCount.get());
                             double percent = (double) done / total;
                             double speed = (double) (done - lastDone) / 10;
                             lastDone = done;
 
-                            String logString = String.format("Progress: %.2f%%               Speed: %.1f/s               Valid: %d Invalid: %d", percent * 100,
-                                    speed, validCount.get(), invalidCount.get());
+                            String logString = String.format("Progress: %.2f%%               Speed: %.1f/s               Valid: %d Invalid: %d Unknown: %d", percent * 100,
+                                    speed, validCount.get(), invalidCount.get(), errCount.get());
                             sumSpeed += speed;
                             speedLog.add(speed);
                             if (speedLog.size() > 10) {
@@ -252,13 +252,8 @@ public class Main extends javax.swing.JFrame {
             }
         });
 
-        numberOfWorkersComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1", "2", "4", "8", "16", "32", "64", "128" }));
+        numberOfWorkersComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1", "2", "4", "8", "16", "32", "64" }));
         numberOfWorkersComboBox.setSelectedIndex(4);
-        numberOfWorkersComboBox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                numberOfWorkersComboBoxActionPerformed(evt);
-            }
-        });
 
         numberOfWorkersLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         numberOfWorkersLabel.setText("Number of threads");
@@ -291,7 +286,7 @@ public class Main extends javax.swing.JFrame {
             dataTable.getColumnModel().getColumn(2).setMaxWidth(150);
         }
 
-        progressLabel.setText("Progress: --               Speed: --               Valid: -- Invalid: --               ETR: --:--:--");
+        progressLabel.setText("Progress: --               Speed: --               Valid: -- Invalid: -- Unknown: --               ETR: --:--:--");
 
         startButton.setFont(new java.awt.Font("Lucida Grande", 0, 36)); // NOI18N
         startButton.setText("Start");
@@ -512,10 +507,6 @@ public class Main extends javax.swing.JFrame {
     private void googleMXCheckOnlyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_googleMXCheckOnlyActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_googleMXCheckOnlyActionPerformed
-
-    private void numberOfWorkersComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_numberOfWorkersComboBoxActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_numberOfWorkersComboBoxActionPerformed
 
     private void startButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startButtonActionPerformed
         inputFileButton.setEnabled(false);

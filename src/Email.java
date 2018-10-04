@@ -14,7 +14,7 @@ public class Email implements Comparable<Email> {
     public String lineInfo;
 
     public int tableIndex = -1; // Index in the table.
-    public int status = -1; // -1: not_checked, 0: invalid, 1: valid.
+    public int status = -1; // -1: not_checked, 0: invalid, 1: valid, -2: connection-error
 
     public StringBuilder log = new StringBuilder();
 
@@ -38,14 +38,17 @@ public class Email implements Comparable<Email> {
     }
 
     public String getStatusString() {
+        if (status == -2) {
+            return "connection-error";
+        }
         if (status == -1) {
-            return "To be checked";
+            return "to-be-checked";
         }
         if (status == 0) {
-            return "Invalid";
+            return "invalid";
         }
         if (status == 1) {
-            return "Valid";
+            return "valid";
         }
 
         return "Undefined";
