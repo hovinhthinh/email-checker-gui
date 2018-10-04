@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Hashtable;
+import java.util.Random;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
@@ -22,6 +23,12 @@ public class EmailChecker {
 
     private static final String GG_MAIL_DOMAIN = "gmail.com";
     private static final String TAB = "     ";
+    private static final ArrayList<String> GG_MAIL_VALID_ACC = new ArrayList<>();
+    private static final Random RANDOM = new Random();
+
+    static {
+        GG_MAIL_VALID_ACC.add("checker@gmail.com");
+    }
 
     private static final ExpiringMap<String, ArrayList<String>> mxMap = new ExpiringMap<>();
 
@@ -162,7 +169,11 @@ public class EmailChecker {
                     throw new Exception("Not ESMTP.");
                 }
                 // Validate the sender address.
-                say(wtr, "MAIL FROM: <checker@gmail.com>", e);
+                String sender = null;
+                synchronized (GG_MAIL_VALID_ACC) {
+                    sender = GG_MAIL_VALID_ACC.get(RANDOM.nextInt(GG_MAIL_VALID_ACC.size()));
+                }
+                say(wtr, "MAIL FROM: <" + sender + ">", e);
                 res = hear(rdr, e);
                 if (res != 250) {
                     throw new Exception("Sender rejected.");
@@ -190,6 +201,11 @@ public class EmailChecker {
                 } catch (Exception e3) {
                 }
                 if (valid) {
+                    if (ggMXOnly && address.toLowerCase().endsWith("@" + GG_MAIL_DOMAIN)) {
+                        synchronized (GG_MAIL_VALID_ACC) {
+                            GG_MAIL_VALID_ACC.add(address);
+                        }
+                    }
                     return 1;
                 }
             }
