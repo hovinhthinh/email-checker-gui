@@ -134,13 +134,11 @@ public class EmailChecker {
         }
 
         if (ggMXOnly) {
-            // Choose only top 3 MX servers for GG.
-            if (mxList.size() > 3) {
-                ArrayList<String> newMxList = new ArrayList<>();
-                newMxList.addAll(mxList.subList(0, 3));
-                mxList = newMxList;
-            }
+            // Choose only 1 random MX server for GG.
             Collections.shuffle(mxList);
+            ArrayList<String> newMxList = new ArrayList<>();
+            newMxList.addAll(mxList.subList(0, 1));
+            mxList = newMxList;
         }
         // Now, do the SMTP validation, try each mail exchanger until we get
         // a positive acceptance. It *MAY* be possible for one MX to allow
