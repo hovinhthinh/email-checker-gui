@@ -139,7 +139,9 @@ public class Main extends javax.swing.JFrame {
 
         ArrayList<Email> toShuffle = new ArrayList<>();
         toShuffle.addAll(emails);
-        Collections.shuffle(toShuffle);
+        if (!isRechecking) {
+            Collections.shuffle(toShuffle);
+        }
 
         DefaultTableModel tableModel = (DefaultTableModel) dataTable.getModel();
         tableModel.setRowCount(0);
