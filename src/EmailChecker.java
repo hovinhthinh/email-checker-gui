@@ -14,6 +14,7 @@ import java.util.Hashtable;
 import java.util.Random;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
+import javax.naming.OperationNotSupportedException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.DirContext;
@@ -44,7 +45,7 @@ public class EmailChecker {
         DirContext ictx = new InitialDirContext(env);
         Attributes attrs = ictx.getAttributes(hostName, new String[]{"MX"});
         Attribute attr = attrs.get("MX");
-        // If we don't have an MX record, try the machine itself.
+        // If we don't have an MX record, try the machine itself.        
         if ((attr == null) || (attr.size() == 0)) {
             attrs = ictx.getAttributes(hostName, new String[]{"A"});
             attr = attrs.get("A");
@@ -124,6 +125,8 @@ public class EmailChecker {
         ArrayList<String> mxList;
         try {
             mxList = getMX(ggMXOnly ? GG_MAIL_DOMAIN : domain);
+        } catch (OperationNotSupportedException ex) {
+            return -1;
         } catch (NamingException ex) {
             return 0;
         }

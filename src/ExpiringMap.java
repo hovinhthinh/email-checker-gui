@@ -481,7 +481,6 @@ public class ExpiringMap<K, V> implements Map<K, V> {
  *  under the License.
  *
  */
-
 /**
  * A listener for expired object events.
  *

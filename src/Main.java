@@ -1,8 +1,11 @@
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -29,14 +32,20 @@ import javax.swing.table.DefaultTableModel;
 public class Main extends javax.swing.JFrame {
 
     private String separator;
-    private File input, output;
+    private File input, output, backup;
+
+    public static final String VALID = "valid";
+    public static final String INVALID = "invalid";
+    public static final String UNKNOWN = "connection-err";
+
+    boolean isRechecking;
 
     /**
      * Creates new form EmailChecker
      */
     public Main() {
         initComponents();
-
+        isRechecking = false;
         dataTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent event) {
@@ -73,16 +82,31 @@ public class Main extends javax.swing.JFrame {
     }
 
     private void resetGUI() {
-        input = output = null;
+        isRechecking = false;
+        input = output = backup = null;
         inputFileLabel.setText("No chosen file");
         outputFileLabel.setText("No chosen file");
         inputFileButton.setEnabled(true);
         outputFileButton.setEnabled(false);
-        googleMXCheckOnly.setEnabled(true);
+//        googleMXCheckOnly.setEnabled(true);
         numberOfWorkersComboBox.setEnabled(true);
-
+        autoRecheckUnknown.setEnabled(true);
         startButton.setText("Start");
         startButton.setEnabled(false);
+    }
+
+    private boolean recheck() {
+        isRechecking = true;
+        String outputName = output.getName();
+        backup = new File(output.getParentFile(), outputName.substring(0, outputName.length() - 4) + "_(backup)" + outputName.substring(outputName.length() - 4));
+        try {
+            Files.copy(output.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        input = backup;
+        return check();
     }
 
     private boolean check() {
@@ -107,7 +131,7 @@ public class Main extends javax.swing.JFrame {
         }
         TreeSet<Email> emails = new TreeSet<>();
         for (String line : lines) {
-            emails.add(Email.parseFromLine(line, separator, columnIndex));
+            emails.add(Email.parseFromLine(line, separator, columnIndex, isRechecking));
         }
         log("Removed total " + (lines.size() - emails.size()) + " duplicated emails.");
 
@@ -175,7 +199,18 @@ public class Main extends javax.swing.JFrame {
                                 log("Monitor stopped.");
                                 log("Done.");
                                 log("Output: " + output.getAbsolutePath());
-                                resetGUI();
+                                if (errCount.get() > 0 && autoRecheckUnknown.isSelected()) {
+                                    log("Sleeping for 1 minute.");
+                                    Thread.sleep(60000);
+                                    log("Now rechecking unknown.");
+                                    recheck();
+                                } else {
+                                    if (backup != null) {
+                                        backup.delete();
+                                    }
+                                    resetGUI();
+                                }
+
                             }
                         } while (done != total);
                     } catch (InterruptedException ex) {
@@ -220,10 +255,10 @@ public class Main extends javax.swing.JFrame {
         systemLogPanel = new javax.swing.JScrollPane();
         systemLogTextArea = new javax.swing.JTextArea();
         checkLogLabel = new javax.swing.JLabel();
+        autoRecheckUnknown = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("email-checker (designed for ngocle6993)");
-        setPreferredSize(new java.awt.Dimension(1024, 768));
 
         inputFileButton.setText("Choose Input File");
         inputFileButton.addActionListener(new java.awt.event.ActionListener() {
@@ -246,11 +281,7 @@ public class Main extends javax.swing.JFrame {
 
         googleMXCheckOnly.setSelected(true);
         googleMXCheckOnly.setText("Check GG MX records only");
-        googleMXCheckOnly.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                googleMXCheckOnlyActionPerformed(evt);
-            }
-        });
+        googleMXCheckOnly.setEnabled(false);
 
         numberOfWorkersComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1", "2", "4", "8", "16", "32", "64" }));
         numberOfWorkersComboBox.setSelectedIndex(4);
@@ -311,6 +342,14 @@ public class Main extends javax.swing.JFrame {
 
         checkLogLabel.setText("Check log");
 
+        autoRecheckUnknown.setSelected(true);
+        autoRecheckUnknown.setText("Auto recheck unknown");
+        autoRecheckUnknown.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                autoRecheckUnknownActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -332,18 +371,19 @@ public class Main extends javax.swing.JFrame {
                                 .addGap(0, 0, Short.MAX_VALUE))
                             .addComponent(dataPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 565, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(checkLogLabel)
-                            .addComponent(logPanel, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(startButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(checkLogLabel)
+                                .addComponent(logPanel, javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(startButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(systemLogPanel)
+                                .addComponent(systemLogLabel)
+                                .addGroup(layout.createSequentialGroup()
                                     .addComponent(numberOfWorkersLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 175, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(numberOfWorkersComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addComponent(googleMXCheckOnly, javax.swing.GroupLayout.Alignment.TRAILING))
-                            .addComponent(systemLogPanel)
-                            .addComponent(systemLogLabel))))
+                                    .addComponent(numberOfWorkersComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(googleMXCheckOnly, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(autoRecheckUnknown))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -356,20 +396,23 @@ public class Main extends javax.swing.JFrame {
                     .addComponent(numberOfWorkersComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(numberOfWorkersLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(outputFileButton)
-                    .addComponent(outputFileLabel)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(outputFileButton)
+                        .addComponent(outputFileLabel))
                     .addComponent(googleMXCheckOnly))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(systemLogLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(systemLogPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 140, Short.MAX_VALUE)
+                        .addComponent(systemLogPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 109, Short.MAX_VALUE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(checkLogLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(logPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 297, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(autoRecheckUnknown)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(startButton))
                     .addComponent(dataPanel))
@@ -504,21 +547,25 @@ public class Main extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_outputFileButtonActionPerformed
 
-    private void googleMXCheckOnlyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_googleMXCheckOnlyActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_googleMXCheckOnlyActionPerformed
-
     private void startButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startButtonActionPerformed
         inputFileButton.setEnabled(false);
         outputFileButton.setEnabled(false);
-        googleMXCheckOnly.setEnabled(false);
+//        googleMXCheckOnly.setEnabled(false);
         numberOfWorkersComboBox.setEnabled(false);
+        autoRecheckUnknown.setEnabled(false);
 
         startButton.setText("Checking...");
         startButton.setEnabled(false);
 
-        check();
+        if (!check()) {
+            resetGUI();
+        }
+
     }//GEN-LAST:event_startButtonActionPerformed
+
+    private void autoRecheckUnknownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoRecheckUnknownActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_autoRecheckUnknownActionPerformed
 
     /**
      * @param args the command line arguments
@@ -562,6 +609,7 @@ public class Main extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JCheckBox autoRecheckUnknown;
     private javax.swing.JLabel checkLogLabel;
     private javax.swing.JScrollPane dataPanel;
     private javax.swing.JTable dataTable;

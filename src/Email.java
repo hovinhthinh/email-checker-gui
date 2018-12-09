@@ -21,13 +21,27 @@ public class Email implements Comparable<Email> {
     private Email() {
     }
 
-    public static Email parseFromLine(String line, String separator, int columnIndex) {
+    public static Email parseFromLine(String line, String separator, int columnIndex, boolean isRecheck) {
         String[] data = line.split(separator);
         if (columnIndex >= data.length) {
             return null;
         }
         Email e = new Email();
-        e.lineInfo = line;
+        if (!isRecheck) {
+            e.lineInfo = line;
+        } else {
+            int p = line.lastIndexOf(separator);
+            e.lineInfo = line.substring(0, p);
+            String status = line.substring(p + 1);
+            if (status.equals(Main.UNKNOWN)) {
+                e.status = -2;
+            } else if (status.equals(Main.INVALID)) {
+                e.status = 0;
+            } else if (status.equals(Main.VALID)) {
+                e.status = 1;
+            }
+        }
+
         e.email = data[columnIndex];
         return e;
     }
@@ -39,16 +53,16 @@ public class Email implements Comparable<Email> {
 
     public String getStatusString() {
         if (status == -2) {
-            return "connection-error";
+            return Main.UNKNOWN;
         }
         if (status == -1) {
             return "to-be-checked";
         }
         if (status == 0) {
-            return "invalid";
+            return Main.INVALID;
         }
         if (status == 1) {
-            return "valid";
+            return Main.VALID;
         }
 
         return "Undefined";

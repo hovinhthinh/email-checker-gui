@@ -49,8 +49,13 @@ public class Worker extends Thread {
             }
 
             if (code == 1) {
-                // 60s timeout.
-                code = EmailChecker.isAddressValid(e.email, 60000, e, ggMXOnly);
+                if (e.status == 0 || e.status == 1) {
+                    // Already checked (rechecking feature).
+                    code = e.status;
+                } else {
+                    // 60s timeout.
+                    code = EmailChecker.isAddressValid(e.email, 60000, e, ggMXOnly);
+                }
             }
             e.status = code;
             switch (code) {
