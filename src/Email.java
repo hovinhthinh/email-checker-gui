@@ -33,9 +33,7 @@ public class Email implements Comparable<Email> {
             int p = line.lastIndexOf(separator);
             e.lineInfo = line.substring(0, p);
             String status = line.substring(p + 1);
-            if (status.equals(Main.UNKNOWN)) {
-                e.status = -2;
-            } else if (status.equals(Main.INVALID)) {
+            if (status.equals(Main.INVALID)) {
                 e.status = 0;
             } else if (status.equals(Main.VALID)) {
                 e.status = 1;
@@ -48,6 +46,9 @@ public class Email implements Comparable<Email> {
 
     @Override
     public int compareTo(Email o) {
+        if (status != o.status) {
+            return Integer.compare(o.status, status);
+        }
         return email.compareTo(o.email);
     }
 
